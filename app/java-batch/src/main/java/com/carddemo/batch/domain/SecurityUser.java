@@ -1,10 +1,14 @@
 package com.carddemo.batch.domain;
 
 import com.carddemo.batch.copybook.FixedWidth;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
-/** SEC-USER-DATA (copybook CSUSR01Y, RECLN 80). Type {@code A} is an administrator. */
-public record SecurityUser(String userId, String firstName, String lastName, String password, String type,
-                           String filler) {
+/**
+ * SEC-USER-DATA (copybook CSUSR01Y, RECLN 80). Type {@code A} is an administrator. The password is
+ * kept out of the REST representation; the 3270 map only ever redisplayed it locally.
+ */
+public record SecurityUser(String userId, String firstName, String lastName, @JsonIgnore String password,
+                           String type, String filler) {
 
     public static final int LENGTH = 80;
     public static final String TYPE_ADMIN = "A";

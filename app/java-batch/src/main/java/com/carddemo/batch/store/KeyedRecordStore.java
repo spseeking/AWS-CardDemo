@@ -32,7 +32,11 @@ public class KeyedRecordStore<T> {
         load(parser);
     }
 
+    /** A file that does not exist yet is an empty dataset, like a newly defined VSAM cluster. */
     private void load(Function<String, T> parser) {
+        if (!Files.exists(path)) {
+            return;
+        }
         try (Stream<String> lines = Files.lines(path, StandardCharsets.ISO_8859_1)) {
             lines.map(line -> line.replace("\r", ""))
                     .filter(line -> !line.isBlank())
@@ -69,6 +73,9 @@ public class KeyedRecordStore<T> {
             content.append(formatter.apply(record)).append(System.lineSeparator());
         }
         try {
+            if (path.getParent() != null) {
+                Files.createDirectories(path.getParent());
+            }
             Files.writeString(path, content.toString(), StandardCharsets.ISO_8859_1);
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to write " + path, e);

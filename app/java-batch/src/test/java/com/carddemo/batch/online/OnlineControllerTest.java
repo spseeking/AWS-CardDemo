@@ -76,6 +76,30 @@ class OnlineControllerTest {
     }
 
     @Test
+    void addsTheFirstTransactionWhenTheTransactionFileDoesNotExistYet() throws Exception {
+        java.nio.file.Files.deleteIfExists(DIRECTORY.resolve("transact.txt"));
+
+        mockMvc.perform(post("/api/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"accountId":"11","typeCode":"01","categoryCode":"1","source":"POS TERM",
+                                 "description":"First","amount":"10.00",
+                                 "originTimestamp":"2022-07-01 10:00:00.000000",
+                                 "processTimestamp":"2022-07-01 10:00:00.000000","merchantId":"800000000",
+                                 "merchantName":"Abshire-Lowe","merchantCity":"Seattle","merchantZip":"99999"}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("0000000000000001"));
+    }
+
+    @Test
+    void neverReturnsThePasswordInTheUserRepresentation() throws Exception {
+        mockMvc.perform(get("/api/users/ADMIN001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value("ADMIN001"))
+                .andExpect(jsonPath("$.password").doesNotExist());
+    }
+
+    @Test
     void listsTheMainMenuOptions() throws Exception {
         mockMvc.perform(get("/api/menu").param("userType", "U"))
                 .andExpect(status().isOk())
