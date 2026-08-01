@@ -1,0 +1,25 @@
+spring:
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+  datasource:
+    url: jdbc:h2:mem:carddemobatch;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+carddemo:
+  daily-transaction-file: ../data/ASCII/dailytran.txt
+  card-xref-file: ../data/ASCII/cardxref.txt
+  account-file: target/data/acctdata.txt
+  tran-cat-balance-file: target/data/tcatbal.txt
+  disclosure-group-file: ../data/ASCII/discgrp.txt
+  transaction-file: target/data/transact.txt
+  daily-reject-file: target/data/dalyrejs.txt
+  legacy-skip-final-account-update: true
+
+logging:
+  level:
+    org.springframework.batch: INFO
