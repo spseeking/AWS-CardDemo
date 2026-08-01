@@ -39,6 +39,27 @@ class CopybookRoundTripTest {
     }
 
     @Test
+    void customerRecordsRoundTrip() {
+        assertRoundTrip("sample/custdata.txt", Customer.LENGTH, record -> Customer.parse(record).format());
+    }
+
+    @Test
+    void cardRecordsRoundTrip() {
+        assertRoundTrip("sample/carddata.txt", Card.LENGTH, record -> Card.parse(record).format());
+    }
+
+    @Test
+    void transactionTypeRecordsRoundTrip() {
+        assertRoundTrip("sample/trantype.txt", TranType.LENGTH, record -> TranType.parse(record).format());
+    }
+
+    @Test
+    void transactionCategoryRecordsRoundTrip() {
+        assertRoundTrip("sample/trancatg.txt", TranCategory.LENGTH,
+                record -> TranCategory.parse(record).format());
+    }
+
+    @Test
     void categoryBalanceRecordsRoundTrip() {
         assertRoundTrip("sample/tcatbal.txt", TranCatBalance.LENGTH,
                 record -> TranCatBalance.parse(record).format());

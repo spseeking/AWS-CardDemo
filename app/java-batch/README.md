@@ -1,11 +1,36 @@
-# CardDemo Batch — Spring Batch conversion of POSTTRAN and INTCALC
+# CardDemo — Java conversion of the COBOL batch jobs and CICS transactions
 
-Java 17 / Spring Boot 3 / Spring Batch conversion of two CardDemo COBOL batch programs:
+Java 17 / Spring Boot 3 conversion: the batch programs become Spring Batch jobs, the CICS online
+programs become REST services.
 
-| JCL job  | COBOL program | Spring Batch job | Converted logic |
-|:---------|:--------------|:-----------------|:----------------|
-| POSTTRAN | CBTRN02C      | `postTranJob`    | Daily transaction validation, posting, rejects |
-| INTCALC  | CBACT04C      | `intCalcJob`     | Monthly interest accrual and account roll-up |
+| JCL job  | COBOL program     | Spring Batch job              | Converted logic |
+|:---------|:------------------|:------------------------------|:----------------|
+| POSTTRAN | CBTRN02C          | `postTranJob`                 | Daily transaction validation, posting, rejects |
+| INTCALC  | CBACT04C          | `intCalcJob`                  | Monthly interest accrual and account roll-up |
+| TRANREPT | CBTRN03C          | `transactionReportJob`        | 133-byte transaction detail report with page/account/grand totals |
+| CREASTMT | CBSTM03A/CBSTM03B | `statementJob`                | Plain text and HTML account statements |
+| EXPORT   | CBEXPORT          | `customerExportJob`           | 500-byte branch migration records (DISPLAY + COMP + COMP-3) |
+| IMPORT   | CBIMPORT          | `customerImportJob`           | Rebuilds the master files, counts unknown record types |
+| PRTACCT  | CBACT01C          | `accountListingJob`           | Account master listing |
+| PRTCARD  | CBACT02C          | `cardListingJob`              | Card master listing |
+| PRTXREF  | CBACT03C          | `cardXrefListingJob`          | Cross reference listing |
+| PRTCUST  | CBCUS01C          | `customerListingJob`          | Customer master listing |
+| PRTTRAN  | CBTRN01C          | `dailyTransactionListingJob`  | Daily transaction listing |
+
+| CICS program            | REST endpoint |
+|:------------------------|:--------------|
+| COSGN00C                | `POST /api/signon` |
+| COMEN01C / COADM01C     | `GET /api/menu`, `GET /api/menu/{option}` |
+| COACTVWC / COACTUPC     | `GET|PUT /api/accounts/{accountId}` |
+| COCRDLIC/COCRDSLC/COCRDUPC | `GET /api/cards`, `GET|PUT /api/cards/{cardNumber}` |
+| COTRN00C/COTRN01C/COTRN02C | `GET /api/transactions`, `GET /api/transactions/{id}`, `POST /api/transactions` |
+| COBIL00C                | `GET|POST /api/billpay/{accountId}` |
+| CORPT00C                | `POST /api/reports` (launches `transactionReportJob`) |
+| COUSR00C-COUSR03C       | `GET|POST /api/users`, `GET|PUT|DELETE /api/users/{userId}` |
+
+The screen validation messages are preserved verbatim (`Wrong Password. Try again ...`,
+`Account number must be a non zero 11 digit number`, `You have nothing to pay...`) and returned as
+`{"errorMessage": ...}` with HTTP 400.
 
 The VSAM KSDS files are represented by the repository's fixed-width ASCII sample data
 (`app/data/ASCII`), read and rewritten by `KeyedRecordStore`. That keeps the jobs runnable and
@@ -39,6 +64,12 @@ interest is added to `ACCT-CURR-BAL` and both cycle totals are reset.
 
 ### Known divergence
 
+`CBTRN03C` adds `TRAN-AMT` to the page and account totals once more at end of file, double counting
+the last reported transaction (`carddemo.legacy-report-double-counts-last-amount`, default `true`),
+and its date-range filter uses `NEXT SENTENCE`, which on the mainframe abandons the read loop at the
+first out-of-range record rather than skipping it
+(`carddemo.legacy-stop-report-at-out-of-range-record`, default `false`, i.e. the conversion skips).
+
 `CBACT04C` never updates the account of the *last* group of category balances: the
 `1050-UPDATE-ACCOUNT` call sits in an `ELSE` branch that the `PERFORM UNTIL` loop can never reach.
 `carddemo.legacy-skip-final-account-update` (default `true`) reproduces that behaviour so output
@@ -47,7 +78,7 @@ matches the mainframe; set it to `false` to post the final account's interest as
 ## Running
 
 ```bash
-mvn test                        # 41 tests: codecs, reject codes, interest formula, both jobs
+mvn test                        # 81 tests: codecs, reject codes, interest formula, jobs, REST services
 mvn package -DskipTests
 
 mkdir -p target/data && cp ../data/ASCII/{acctdata,tcatbal}.txt target/data/

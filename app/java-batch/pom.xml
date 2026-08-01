@@ -14,8 +14,8 @@
   <groupId>com.carddemo</groupId>
   <artifactId>carddemo-batch</artifactId>
   <version>1.0.0-SNAPSHOT</version>
-  <name>CardDemo Batch (POSTTRAN + INTCALC)</name>
-  <description>Spring Batch conversion of the CardDemo COBOL batch programs CBTRN02C and CBACT04C</description>
+  <name>CardDemo (converted COBOL batch and online programs)</name>
+  <description>Spring Batch and Spring MVC conversion of the CardDemo COBOL batch jobs and CICS transactions</description>
 
   <properties>
     <java.version>17</java.version>
@@ -30,6 +30,10 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
     <dependency>
       <groupId>com.h2database</groupId>

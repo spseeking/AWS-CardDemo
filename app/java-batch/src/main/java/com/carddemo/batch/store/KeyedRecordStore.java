@@ -51,6 +51,10 @@ public class KeyedRecordStore<T> {
         records.put(keyExtractor.apply(record), record);
     }
 
+    public void remove(String key) {
+        records.remove(key);
+    }
+
     public int size() {
         return records.size();
     }
