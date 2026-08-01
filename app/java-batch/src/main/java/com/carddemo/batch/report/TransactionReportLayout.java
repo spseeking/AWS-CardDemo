@@ -37,7 +37,7 @@ public final class TransactionReportLayout {
                                 int categoryCode, String categoryDescription, String source, BigDecimal amount) {
         return FixedWidth.pad(FixedWidth.chars(transactionId, 16)
                 + " "
-                + FixedWidth.chars(String.valueOf(accountId), 11)
+                + FixedWidth.digits(accountId, 11)
                 + " "
                 + FixedWidth.chars(typeCode, 2)
                 + "-"

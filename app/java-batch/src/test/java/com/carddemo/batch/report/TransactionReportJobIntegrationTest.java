@@ -60,11 +60,11 @@ class TransactionReportJobIntegrationTest {
         assertThat(report.get(0)).contains("Date Range: 2022-06-01 to 2022-06-30");
         assertThat(report.stream().filter(line -> line.startsWith("TRAN-")).map(String::trim))
                 .containsExactly(
-                        "TRAN-A-1         11          01-Purchase        0001-Regular Sales Draft"
+                        "TRAN-A-1         00000000011 01-Purchase        0001-Regular Sales Draft"
                                 + "           POS TERM               100.00",
-                        "TRAN-A-2         11          02-Payment         0002-Payment Received"
+                        "TRAN-A-2         00000000011 02-Payment         0002-Payment Received"
                                 + "              POS TERM      -         25.00",
-                        "TRAN-C-1         12          01-Purchase        0001-Regular Sales Draft"
+                        "TRAN-C-1         00000000012 01-Purchase        0001-Regular Sales Draft"
                                 + "           POS TERM                10.00");
     }
 

@@ -30,7 +30,17 @@ public final class PackedDecimal {
         return sign == 0x0D ? unscaled.negate() : unscaled;
     }
 
+    /** A {@code PIC S9(n)} field: the sign nibble is C or D. */
     public static byte[] format(BigDecimal value, int digits, int scale) {
+        return format(value, digits, scale, true);
+    }
+
+    /** A {@code PIC 9(n)} field: IBM COBOL stores the unsigned sign nibble F. */
+    public static byte[] formatUnsigned(BigDecimal value, int digits, int scale) {
+        return format(value, digits, scale, false);
+    }
+
+    private static byte[] format(BigDecimal value, int digits, int scale, boolean signed) {
         BigDecimal scaled = value.setScale(scale, RoundingMode.DOWN);
         String text = scaled.abs().unscaledValue().toString();
         if (text.length() > digits) {
@@ -44,7 +54,8 @@ public final class PackedDecimal {
         String nibbles = (digits % 2 == 0 ? "0" : "") + text;
         for (int i = 0; i < length; i++) {
             int high = nibbles.charAt(i * 2) - '0';
-            int low = i < length - 1 ? nibbles.charAt(i * 2 + 1) - '0' : (scaled.signum() < 0 ? 0x0D : 0x0C);
+            int sign = signed ? (scaled.signum() < 0 ? 0x0D : 0x0C) : 0x0F;
+            int low = i < length - 1 ? nibbles.charAt(i * 2 + 1) - '0' : sign;
             packed[i] = (byte) ((high << 4) | low);
         }
         return packed;

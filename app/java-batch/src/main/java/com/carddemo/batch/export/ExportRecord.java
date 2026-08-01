@@ -83,7 +83,8 @@ public final class ExportRecord {
         text(record, base + 303, 10, customer.dateOfBirth());
         text(record, base + 313, 10, customer.eftAccountId());
         text(record, base + 323, 1, customer.primaryCardHolderIndicator());
-        packed(record, base + 324, 3, 0, BigDecimal.valueOf(customer.ficoScore()));
+        // EXP-CUST-FICO-CREDIT-SCORE is PIC 9(03) COMP-3, so its sign nibble is F, not C
+        packedUnsigned(record, base + 324, 3, BigDecimal.valueOf(customer.ficoScore()));
         text(record, base + 326, 134, "");
     }
 
@@ -229,6 +230,11 @@ public final class ExportRecord {
 
     private static void packed(byte[] record, int offset, int digits, int scale, BigDecimal value) {
         byte[] bytes = PackedDecimal.format(value, digits, scale);
+        System.arraycopy(bytes, 0, record, offset, bytes.length);
+    }
+
+    private static void packedUnsigned(byte[] record, int offset, int digits, BigDecimal value) {
+        byte[] bytes = PackedDecimal.formatUnsigned(value, digits, 0);
         System.arraycopy(bytes, 0, record, offset, bytes.length);
     }
 }

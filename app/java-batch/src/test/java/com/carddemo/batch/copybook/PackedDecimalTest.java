@@ -48,6 +48,14 @@ class PackedDecimalTest {
         assertThat(PackedDecimal.parse(packed, 0, 3, 0)).isEqualByComparingTo("1");
     }
 
+    @Test
+    void unsignedPicture9FieldsCarryTheFSignNibble() {
+        assertThat(hex(PackedDecimal.formatUnsigned(new BigDecimal("780"), 3, 0))).isEqualTo("780F");
+        assertThat(hex(PackedDecimal.format(new BigDecimal("780"), 3, 0))).isEqualTo("780C");
+        assertThat(PackedDecimal.parse(PackedDecimal.formatUnsigned(new BigDecimal("780"), 3, 0), 0, 3, 0))
+                .isEqualByComparingTo("780");
+    }
+
     private static String hex(byte[] bytes) {
         StringBuilder text = new StringBuilder();
         for (byte value : bytes) {

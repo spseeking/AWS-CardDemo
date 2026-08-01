@@ -32,7 +32,7 @@ public final class StatementLayout {
     }
 
     public static String accountId(long value) {
-        return FixedWidth.chars("Account ID         :", 20) + FixedWidth.chars(String.valueOf(value), 20)
+        return FixedWidth.chars("Account ID         :", 20) + FixedWidth.chars(FixedWidth.digits(value, 11), 20)
                 + " ".repeat(40);
     }
 

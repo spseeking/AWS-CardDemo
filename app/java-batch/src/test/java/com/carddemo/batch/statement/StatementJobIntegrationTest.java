@@ -1,6 +1,8 @@
 package com.carddemo.batch.statement;
 
+import com.carddemo.batch.domain.TransactionRecord;
 import com.carddemo.batch.testsupport.BatchFixtureFiles;
+import com.carddemo.batch.testsupport.Fixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.Job;
@@ -12,6 +14,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -59,7 +63,7 @@ class StatementJobIntegrationTest {
         assertThat(statements.stream().filter(line -> line.equals(StatementLayout.END_OF_STATEMENT)))
                 .hasSize(2);
         assertThat(statements.get(1).trim()).isEqualTo("Ada Lovelace");
-        assertThat(statements).anyMatch(line -> line.startsWith("Account ID         :11"));
+        assertThat(statements).anyMatch(line -> line.startsWith("Account ID         :00000000011"));
         assertThat(statements).anyMatch(line -> line.startsWith("FICO Score         :780"));
     }
 
@@ -75,11 +79,28 @@ class StatementJobIntegrationTest {
     }
 
     @Test
+    void escapesMasterFileTextInTheHtmlStatement() throws Exception {
+        TransactionRecord injected = Fixtures.postedTransaction("TRAN-X-1", BatchFixtureFiles.CARD_A, "01",
+                1, "1.00", "2022-06-15 10:00:00.000000");
+        injected.setDescription("<script>alert(1)</script>");
+        Files.writeString(DIRECTORY.resolve("transact.txt"), injected.format() + System.lineSeparator(),
+                StandardCharsets.ISO_8859_1);
+        jobLauncherTestUtils.launchJob(new JobParametersBuilder()
+                .addLong("run", System.nanoTime())
+                .toJobParameters());
+
+        List<String> html = BatchFixtureFiles.readLines(DIRECTORY.resolve("stmtfile.html"));
+
+        assertThat(html).noneMatch(line -> line.contains("<script>"));
+        assertThat(html).anyMatch(line -> line.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+    }
+
+    @Test
     void writesAMatchingHtmlStatement() {
         List<String> html = BatchFixtureFiles.readLines(DIRECTORY.resolve("stmtfile.html"));
 
         assertThat(html.stream().filter(line -> line.equals("<!DOCTYPE html>"))).hasSize(2);
-        assertThat(html).contains("<h3>Statement for Account Number: 11</h3>");
+        assertThat(html).contains("<h3>Statement for Account Number: 00000000011</h3>");
         assertThat(html).contains("<p style=\"font-size:16px\">Ada Lovelace</p>");
         assertThat(html).contains("<p>Total EXP: 75.00</p>");
         assertThat(html.get(html.size() - 1)).isEqualTo("</html>");

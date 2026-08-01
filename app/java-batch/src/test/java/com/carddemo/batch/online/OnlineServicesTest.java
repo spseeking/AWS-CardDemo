@@ -93,6 +93,10 @@ class OnlineServicesTest {
         assertThatThrownBy(() -> userService.update("NEWUSER1", "New", "User", "SECRET99", "U"))
                 .hasMessage("Please modify to update ...");
 
+        assertThatThrownBy(() -> userService.add("NEWUSER12", "New", "User", "SECRET99", "U"))
+                .as("a longer id would be truncated to 8 bytes on write and overwrite NEWUSER1")
+                .hasMessage("User ID must be 8 characters or less...");
+
         assertThat(userService.update("NEWUSER1", "Renamed", "User", "SECRET99", "A").isAdmin()).isTrue();
         userService.delete("NEWUSER1");
         assertThatThrownBy(() -> userService.find("NEWUSER1")).hasMessage("User ID NOT found...");

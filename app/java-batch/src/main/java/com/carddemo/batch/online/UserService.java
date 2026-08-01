@@ -86,6 +86,19 @@ public class UserService {
         if (isEmpty(type)) {
             throw new BusinessRuleException("User Type can NOT be empty...");
         }
+        // the 3270 map could not send more than the copybook field widths; REST callers can
+        if (userId.trim().length() > 8) {
+            throw new BusinessRuleException("User ID must be 8 characters or less...");
+        }
+        if (password.trim().length() > 8) {
+            throw new BusinessRuleException("Password must be 8 characters or less...");
+        }
+        if (firstName.trim().length() > 20 || lastName.trim().length() > 20) {
+            throw new BusinessRuleException("Name must be 20 characters or less...");
+        }
+        if (type.trim().length() > 1) {
+            throw new BusinessRuleException("User Type must be A or U...");
+        }
     }
 
     private static boolean isEmpty(String value) {
