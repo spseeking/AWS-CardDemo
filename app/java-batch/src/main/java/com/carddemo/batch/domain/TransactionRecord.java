@@ -177,4 +177,22 @@ public class TransactionRecord {
     public void setFiller(String filler) {
         this.filler = filler;
     }
+
+    /** The CBTRN01C DISPLAY of the daily transaction record. */
+    @Override
+    public String toString() {
+        return "TRAN-ID=" + id.trim()
+                + " TYPE-CD=" + typeCode
+                + " CAT-CD=" + categoryCode
+                + " SOURCE=" + source.trim()
+                + " DESC=" + description.trim()
+                + " AMT=" + amount
+                + " MERCHANT-ID=" + merchantId
+                + " MERCHANT-NAME=" + merchantName.trim()
+                + " MERCHANT-CITY=" + merchantCity.trim()
+                + " MERCHANT-ZIP=" + merchantZip.trim()
+                + " CARD-NUM=" + cardNumber.trim()
+                + " ORIG-TS=" + originTimestamp.trim()
+                + " PROC-TS=" + processTimestamp.trim();
+    }
 }

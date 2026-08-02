@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAdjusters;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * CORPT00C: instead of submitting the TRANREPT job through the internal reader, this launches the
@@ -28,6 +29,9 @@ public class ReportService {
     /** The submitted range plus the job execution id that replaced the JCL job number. */
     public record ReportSubmission(String startDate, String endDate, long executionId) {
     }
+
+    /** DATEPARM, the report dataset and the tasklet totals are all shared, as the JCL initiator was. */
+    private final ReentrantLock submission = new ReentrantLock();
 
     private final JobLauncher jobLauncher;
     private final Job transactionReportJob;
@@ -67,8 +71,9 @@ public class ReportService {
             }
         }
 
-        writeDateParm(start, end);
+        submission.lock();
         try {
+            writeDateParm(start, end);
             long executionId = jobLauncher.run(transactionReportJob, new JobParametersBuilder()
                     .addString("startDate", start)
                     .addString("endDate", end)
@@ -77,6 +82,8 @@ public class ReportService {
             return new ReportSubmission(start, end, executionId);
         } catch (Exception e) {
             throw new IllegalStateException("Unable to submit the transaction report job", e);
+        } finally {
+            submission.unlock();
         }
     }
 

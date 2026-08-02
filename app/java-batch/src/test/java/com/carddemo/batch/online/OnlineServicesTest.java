@@ -152,6 +152,18 @@ class OnlineServicesTest {
     }
 
     @Test
+    void aUserAddedWithALowerCasePasswordCanStillSignOn() {
+        userService.add("LOWER001", "Lower", "Case", "secret", "U");
+
+        assertThat(signOnService.signOn("lower001", "secret").program()).isEqualTo("COMEN01C");
+    }
+
+    @Test
+    void transactionViewPadsTheEnteredIdToTheSixteenByteKey() {
+        assertThat(transactionService.view("TRAN-A-1").getId()).hasSize(16);
+    }
+
+    @Test
     void transactionAddResolvesTheCardFromTheAccountAndAssignsTheNextId() {
         TransactionRecord added = transactionService.add(new TransactionService.NewTransaction("11", null,
                 "01", "1", "POS TERM", "Online purchase", "42.50", "2022-07-01 10:00:00.000000",

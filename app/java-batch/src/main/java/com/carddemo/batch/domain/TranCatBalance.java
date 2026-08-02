@@ -74,4 +74,13 @@ public class TranCatBalance {
     public void setBalance(BigDecimal balance) {
         this.balance = balance;
     }
+
+    /** The CBTRN01C style DISPLAY of TRAN-CAT-BAL-RECORD. */
+    @Override
+    public String toString() {
+        return "ACCT-ID=" + FixedWidth.digits(accountId, 11)
+                + " TYPE-CD=" + transactionTypeCode
+                + " CAT-CD=" + transactionCategoryCode
+                + " BALANCE=" + balance;
+    }
 }

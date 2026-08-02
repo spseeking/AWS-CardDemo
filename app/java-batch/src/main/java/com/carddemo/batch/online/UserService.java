@@ -35,8 +35,8 @@ public class UserService {
         if (users.find(key(userId)).isPresent()) {
             throw new BusinessRuleException("User ID already exist...");
         }
-        SecurityUser user = new SecurityUser(key(userId), firstName, lastName, password, type.toUpperCase(
-                Locale.ROOT), "");
+        SecurityUser user = new SecurityUser(key(userId), firstName, lastName, storedPassword(password),
+                type.toUpperCase(Locale.ROOT), "");
         users.put(user);
         users.save();
         return user;
@@ -48,7 +48,7 @@ public class UserService {
         KeyedRecordStore<SecurityUser> users = repository.users();
         SecurityUser current = users.find(key(userId))
                 .orElseThrow(() -> new BusinessRuleException("User ID NOT found..."));
-        SecurityUser updated = new SecurityUser(current.userId(), firstName, lastName, password,
+        SecurityUser updated = new SecurityUser(current.userId(), firstName, lastName, storedPassword(password),
                 type.toUpperCase(Locale.ROOT), current.filler());
         if (updated.format().equals(current.format())) {
             throw new BusinessRuleException("Please modify to update ...");
@@ -56,6 +56,11 @@ public class UserService {
         users.put(updated);
         users.save();
         return updated;
+    }
+
+    /** The 3270 password field was upper case only, and COSGN00C upper cases what it compares. */
+    private static String storedPassword(String password) {
+        return password.toUpperCase(Locale.ROOT).trim();
     }
 
     public void delete(String userId) {

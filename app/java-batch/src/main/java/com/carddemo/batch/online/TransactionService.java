@@ -1,5 +1,6 @@
 package com.carddemo.batch.online;
 
+import com.carddemo.batch.copybook.FixedWidth;
 import com.carddemo.batch.domain.CardXref;
 import com.carddemo.batch.domain.TransactionRecord;
 import com.carddemo.batch.store.KeyedRecordStore;
@@ -22,6 +23,7 @@ public class TransactionService {
                                  String merchantCity, String merchantZip) {
     }
 
+    private static final int TRAN_ID_LENGTH = 16;
     private static final String AMOUNT_PATTERN = "-?\\d{1,8}\\.\\d{2}";
     private static final String DATE_PATTERN = "\\d{4}-\\d{2}-\\d{2}";
 
@@ -41,7 +43,7 @@ public class TransactionService {
         if (transactionId == null || transactionId.isBlank()) {
             throw new BusinessRuleException("Tran ID can NOT be empty...");
         }
-        return repository.transactions().find(transactionId.trim())
+        return repository.transactions().find(FixedWidth.chars(transactionId.trim(), TRAN_ID_LENGTH))
                 .orElseThrow(() -> new BusinessRuleException("Transaction ID NOT found..."));
     }
 
@@ -80,7 +82,7 @@ public class TransactionService {
                 highest = Math.max(highest, Long.parseLong(id));
             }
         }
-        return com.carddemo.batch.copybook.FixedWidth.digits(highest + 1, 16);
+        return FixedWidth.digits(highest + 1, TRAN_ID_LENGTH);
     }
 
     private String resolveCardNumber(NewTransaction input) {

@@ -161,4 +161,20 @@ public class Account {
     public void setFiller(String filler) {
         this.filler = filler;
     }
+
+    /** The CBACT01C DISPLAY of ACCOUNT-RECORD. */
+    @Override
+    public String toString() {
+        return "ACCT-ID=" + FixedWidth.digits(accountId, 11)
+                + " ACTIVE-STATUS=" + activeStatus
+                + " CURR-BAL=" + currentBalance
+                + " CREDIT-LIMIT=" + creditLimit
+                + " CASH-CREDIT-LIMIT=" + cashCreditLimit
+                + " OPEN-DATE=" + openDate
+                + " EXPIRAION-DATE=" + expirationDate
+                + " REISSUE-DATE=" + reissueDate
+                + " CURR-CYC-CREDIT=" + currentCycleCredit
+                + " CURR-CYC-DEBIT=" + currentCycleDebit
+                + " GROUP-ID=" + groupId.trim();
+    }
 }
