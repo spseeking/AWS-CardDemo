@@ -1,6 +1,7 @@
 package com.carddemo.batch.online;
 
 import com.carddemo.batch.testsupport.BatchFixtureFiles;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.nio.file.Path;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -33,6 +35,7 @@ class OnlineControllerTest {
         registry.add("carddemo.card-file", () -> DIRECTORY.resolve("carddata.txt"));
         registry.add("carddemo.transaction-file", () -> DIRECTORY.resolve("transact.txt"));
         registry.add("carddemo.user-security-file", () -> DIRECTORY.resolve("usrsec.txt"));
+        registry.add("carddemo.user-credential-file", () -> DIRECTORY.resolve("usrsec.hash"));
     }
 
     @Autowired
@@ -41,6 +44,16 @@ class OnlineControllerTest {
     @BeforeEach
     void writeFiles() {
         BatchFixtureFiles.writeOnlineData(DIRECTORY);
+    }
+
+    /** The bearer token that replaces the commarea the CICS sign on transaction filled in. */
+    private String tokenFor(String userId, String password) throws Exception {
+        String body = mockMvc.perform(post("/api/signon")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"" + userId + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return "Bearer " + new ObjectMapper().readTree(body).get("token").asText();
     }
 
     @Test
@@ -64,12 +77,14 @@ class OnlineControllerTest {
 
     @Test
     void servesTheAccountViewAndTheCardList() throws Exception {
-        mockMvc.perform(get("/api/accounts/11"))
+        String token = tokenFor("USER0001", "PASSWORD");
+
+        mockMvc.perform(get("/api/accounts/11").header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.account.accountId").value(11))
                 .andExpect(jsonPath("$.cardNumber").value(BatchFixtureFiles.CARD_A));
 
-        mockMvc.perform(get("/api/cards").param("accountId", "12"))
+        mockMvc.perform(get("/api/cards").param("accountId", "12").header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].cardNumber").value(BatchFixtureFiles.CARD_C));
@@ -80,6 +95,7 @@ class OnlineControllerTest {
         java.nio.file.Files.deleteIfExists(DIRECTORY.resolve("transact.txt"));
 
         mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", tokenFor("USER0001", "PASSWORD"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"accountId":"11","typeCode":"01","categoryCode":"1","source":"POS TERM",
@@ -93,17 +109,55 @@ class OnlineControllerTest {
 
     @Test
     void neverReturnsThePasswordInTheUserRepresentation() throws Exception {
-        mockMvc.perform(get("/api/users/ADMIN001"))
+        mockMvc.perform(get("/api/users/ADMIN001").header("Authorization", tokenFor("ADMIN001", "PASSWORD")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value("ADMIN001"))
                 .andExpect(jsonPath("$.password").doesNotExist());
     }
 
     @Test
-    void listsTheMainMenuOptions() throws Exception {
-        mockMvc.perform(get("/api/menu").param("userType", "U"))
+    void listsTheMenuOfTheSignedOnUserRatherThanARequestedOne() throws Exception {
+        mockMvc.perform(get("/api/menu")
+                        .header("Authorization", tokenFor("USER0001", "PASSWORD"))
+                        .param("userType", "A"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(11))
                 .andExpect(jsonPath("$[0].program").value("COACTVWC"));
+
+        mockMvc.perform(get("/api/menu").header("Authorization", tokenFor("ADMIN001", "PASSWORD")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].program").value("COUSR00C"));
+    }
+
+    @Test
+    void refusesAnonymousAccessToEverythingButSignOn() throws Exception {
+        mockMvc.perform(get("/api/accounts/11")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/menu")).andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/api/users/USER0001")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/menu").header("Authorization", "Bearer not-a-real-token"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void signingOffInvalidatesTheToken() throws Exception {
+        String token = tokenFor("USER0001", "PASSWORD");
+
+        mockMvc.perform(get("/api/menu").header("Authorization", token)).andExpect(status().isOk());
+        mockMvc.perform(post("/api/signoff").header("Authorization", token)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/menu").header("Authorization", token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void keepsTheUserAdministrationScreensForAdministrators() throws Exception {
+        String user = tokenFor("USER0001", "PASSWORD");
+
+        mockMvc.perform(get("/api/users").header("Authorization", user))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/users/ADMIN001").header("Authorization", user))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/users").header("Authorization", tokenFor("ADMIN001", "PASSWORD")))
+                .andExpect(status().isOk());
     }
 }

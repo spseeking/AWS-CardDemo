@@ -31,6 +31,7 @@ class OnlineServicesTest {
         registry.add("carddemo.card-file", () -> DIRECTORY.resolve("carddata.txt"));
         registry.add("carddemo.transaction-file", () -> DIRECTORY.resolve("transact.txt"));
         registry.add("carddemo.user-security-file", () -> DIRECTORY.resolve("usrsec.txt"));
+        registry.add("carddemo.user-credential-file", () -> DIRECTORY.resolve("usrsec.hash"));
     }
 
     @Autowired
@@ -149,6 +150,46 @@ class OnlineServicesTest {
         Card reloaded = cardService.view(BatchFixtureFiles.CARD_A);
         assertThat(reloaded.embossedName().trim()).isEqualTo("ADA LOVELACE KING");
         assertThat(reloaded.activeStatus()).isEqualTo("N");
+    }
+
+    @Test
+    void migratesTheLegacyClearPasswordOutOfUsrsecOnTheFirstSignOn() throws Exception {
+        signOnService.signOn("USER0001", "PASSWORD");
+
+        String record = java.nio.file.Files.readAllLines(DIRECTORY.resolve("usrsec.txt")).stream()
+                .filter(line -> line.startsWith("USER0001"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(record).hasSize(80);
+        assertThat(record.substring(48, 56)).as("SEC-USR-PWD is blanked once the hash is stored")
+                .isBlank();
+        assertThat(signOnService.signOn("USER0001", "PASSWORD").userId()).isEqualTo("USER0001");
+        assertThat(java.nio.file.Files.readString(DIRECTORY.resolve("usrsec.hash")))
+                .doesNotContain("PASSWORD");
+    }
+
+    @Test
+    void locksAUserOutAfterRepeatedWrongPasswords() {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            assertThatThrownBy(() -> signOnService.signOn("USER0002", "NOPE"))
+                    .hasMessage("Wrong Password. Try again ...");
+        }
+
+        assertThatThrownBy(() -> signOnService.signOn("USER0002", "PASSWORD"))
+                .hasMessage("User is locked out. Contact your administrator ...");
+    }
+
+    @Test
+    void resubmittingTheFormOfAUserWhoNeverSignedOnIsStillRefused() {
+        // USER0002 never signs on successfully in these tests, so it keeps its clear USRSEC password
+        assertThatThrownBy(() -> userService.update("USER0002", "Second", "User", "PASSWORD", "U"))
+                .as("no hashed password yet is not a changed password")
+                .hasMessage("Please modify to update ...");
+
+        assertThat(userService.update("USER0002", "Second", "User", "NEWPASS1", "U").password().trim())
+                .as("a changed password moves out of the clear SEC-USR-PWD field")
+                .isEmpty();
     }
 
     @Test

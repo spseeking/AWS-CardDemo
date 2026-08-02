@@ -139,7 +139,8 @@ public final class BatchFixtureFiles {
         writeReportingData(directory);
         write(directory.resolve("usrsec.txt"), List.of(
                 new SecurityUser("ADMIN001", "Admin", "User", "PASSWORD", SecurityUser.TYPE_ADMIN, ""),
-                new SecurityUser("USER0001", "Regular", "User", "PASSWORD", SecurityUser.TYPE_USER, "")),
+                new SecurityUser("USER0001", "Regular", "User", "PASSWORD", SecurityUser.TYPE_USER, ""),
+                new SecurityUser("USER0002", "Second", "User", "PASSWORD", SecurityUser.TYPE_USER, "")),
                 SecurityUser::format);
     }
 

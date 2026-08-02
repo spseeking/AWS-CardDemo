@@ -44,6 +44,12 @@ public class BatchFilesProperties {
     private Path importDirectory = Path.of("target/data/import");
     /** USRSEC: security users backing the online sign on and user administration screens (80 bytes). */
     private Path userSecurityFile = Path.of("data/usrsec.txt");
+    /**
+     * Hashed sign on credentials. USRSEC only has room for the legacy 8 byte clear password, so the
+     * hashes live beside it and take precedence; a user still on the legacy field is migrated on the
+     * next successful sign on.
+     */
+    private Path userCredentialFile = Path.of("data/usrsec.hash");
 
     /**
      * CBACT04C never updates the account of the last transaction category balance group because
@@ -207,6 +213,14 @@ public class BatchFilesProperties {
 
     public void setUserSecurityFile(Path userSecurityFile) {
         this.userSecurityFile = userSecurityFile;
+    }
+
+    public Path getUserCredentialFile() {
+        return userCredentialFile;
+    }
+
+    public void setUserCredentialFile(Path userCredentialFile) {
+        this.userCredentialFile = userCredentialFile;
     }
 
     public boolean isLegacySkipFinalAccountUpdate() {

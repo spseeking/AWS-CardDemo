@@ -1,6 +1,7 @@
 package com.carddemo.batch.online;
 
 import com.carddemo.batch.domain.SecurityUser;
+import com.carddemo.batch.online.security.PasswordVault;
 import com.carddemo.batch.store.KeyedRecordStore;
 import org.springframework.stereotype.Service;
 
@@ -13,9 +14,11 @@ import java.util.Locale;
 public class UserService {
 
     private final CardDemoRepository repository;
+    private final PasswordVault vault;
 
-    public UserService(CardDemoRepository repository) {
+    public UserService(CardDemoRepository repository, PasswordVault vault) {
         this.repository = repository;
+        this.vault = vault;
     }
 
     public List<SecurityUser> list() {
@@ -35,10 +38,11 @@ public class UserService {
         if (users.find(key(userId)).isPresent()) {
             throw new BusinessRuleException("User ID already exist...");
         }
-        SecurityUser user = new SecurityUser(key(userId), firstName, lastName, storedPassword(password),
+        SecurityUser user = new SecurityUser(key(userId), firstName, lastName, "",
                 type.toUpperCase(Locale.ROOT), "");
         users.put(user);
         users.save();
+        vault.store(key(userId), storedPassword(password));
         return user;
     }
 
@@ -48,17 +52,37 @@ public class UserService {
         KeyedRecordStore<SecurityUser> users = repository.users();
         SecurityUser current = users.find(key(userId))
                 .orElseThrow(() -> new BusinessRuleException("User ID NOT found..."));
-        SecurityUser updated = new SecurityUser(current.userId(), firstName, lastName, storedPassword(password),
-                type.toUpperCase(Locale.ROOT), current.filler());
-        if (updated.format().equals(current.format())) {
+        boolean newPassword = changedPassword(current, storedPassword(password));
+        // an unchanged password of a user not migrated yet stays where it is, so that a resubmitted
+        // identical form still compares equal and is refused the way COUSR02C refused it
+        SecurityUser updated = new SecurityUser(current.userId(), firstName, lastName,
+                newPassword ? "" : current.password(), type.toUpperCase(Locale.ROOT), current.filler());
+        if (!newPassword && updated.format().equals(current.format())) {
             throw new BusinessRuleException("Please modify to update ...");
         }
         users.put(updated);
         users.save();
+        if (newPassword) {
+            vault.store(key(userId), storedPassword(password));
+        }
         return updated;
     }
 
-    /** The 3270 password field was upper case only, and COSGN00C upper cases what it compares. */
+    /**
+     * A user extracted from USRSEC has no hash until a first sign on migrates it, and "no hash" is
+     * not "wrong password": the clear SEC-USR-PWD still carries the value COUSR02C compared against.
+     */
+    private boolean changedPassword(SecurityUser current, String submitted) {
+        String key = key(current.userId());
+        return vault.hasHash(key)
+                ? !vault.matches(key, submitted)
+                : !current.password().trim().equals(submitted);
+    }
+
+    /**
+     * The 3270 password field was upper case only, and COSGN00C upper cases what it compares. The
+     * value is hashed into the credential file rather than written to the clear SEC-USR-PWD field.
+     */
     private static String storedPassword(String password) {
         return password.toUpperCase(Locale.ROOT).trim();
     }
@@ -72,6 +96,7 @@ public class UserService {
                 .orElseThrow(() -> new BusinessRuleException("User ID NOT found..."));
         users.remove(key(user.userId()));
         users.save();
+        vault.remove(key(user.userId()));
     }
 
     private static void validate(String userId, String firstName, String lastName, String password,
