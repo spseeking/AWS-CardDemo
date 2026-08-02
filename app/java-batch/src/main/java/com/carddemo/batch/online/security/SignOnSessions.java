@@ -24,6 +24,14 @@ public class SignOnSessions {
 
     public static final String ADMIN_AUTHORITY = "ROLE_ADMIN";
     public static final String USER_AUTHORITY = "ROLE_USER";
+    private static final String BEARER = "Bearer ";
+
+    /** The token out of an {@code Authorization} header, or an empty string when there is none. */
+    public static String token(String authorizationHeader) {
+        return authorizationHeader != null && authorizationHeader.startsWith(BEARER)
+                ? authorizationHeader.substring(BEARER.length()).trim()
+                : "";
+    }
 
     private record Session(String userId, String userType, Instant expiresAt) {
     }
@@ -37,6 +45,7 @@ public class SignOnSessions {
     }
 
     public String open(String userId, String userType) {
+        sessions.values().removeIf(session -> session.expiresAt().isBefore(Instant.now()));
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -45,7 +54,9 @@ public class SignOnSessions {
     }
 
     public void close(String token) {
-        sessions.remove(token);
+        if (!token.isEmpty()) {
+            sessions.remove(token);
+        }
     }
 
     public Optional<Authentication> authenticate(String token) {

@@ -181,6 +181,18 @@ class OnlineServicesTest {
     }
 
     @Test
+    void resubmittingTheFormOfAUserWhoNeverSignedOnIsStillRefused() {
+        // USER0002 never signs on successfully in these tests, so it keeps its clear USRSEC password
+        assertThatThrownBy(() -> userService.update("USER0002", "Second", "User", "PASSWORD", "U"))
+                .as("no hashed password yet is not a changed password")
+                .hasMessage("Please modify to update ...");
+
+        assertThat(userService.update("USER0002", "Second", "User", "NEWPASS1", "U").password().trim())
+                .as("a changed password moves out of the clear SEC-USR-PWD field")
+                .isEmpty();
+    }
+
+    @Test
     void aUserAddedWithALowerCasePasswordCanStillSignOn() {
         userService.add("LOWER001", "Lower", "Case", "secret", "U");
 

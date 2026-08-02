@@ -12,7 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class SignOnThrottle {
 
-    private record Attempts(int failures, Instant lockedUntil) {
+    /** {@code forgetAt} is when the count lapses, and also when a reached limit stops locking. */
+    private record Attempts(int failures, Instant forgetAt) {
     }
 
     private final int limit;
@@ -27,17 +28,37 @@ public class SignOnThrottle {
 
     public boolean isLockedOut(String userId) {
         Attempts current = attempts.get(userId);
-        return current != null && current.lockedUntil() != null && current.lockedUntil().isAfter(Instant.now());
+        if (current == null) {
+            return false;
+        }
+        if (lapsed(current)) {
+            attempts.remove(userId, current);
+            return false;
+        }
+        return current.failures() >= limit;
     }
 
+    /**
+     * RACF cleared the revoke count once the revoke interval passed, so a served lockout starts the
+     * count again rather than re-locking on the next single mistyped password.
+     */
     public void recordFailure(String userId) {
-        attempts.compute(userId, (key, current) -> {
-            int failures = (current == null ? 0 : current.failures()) + 1;
-            return new Attempts(failures, failures >= limit ? Instant.now().plus(lockout) : null);
-        });
+        sweep();
+        attempts.compute(userId, (key, current) -> new Attempts(
+                (current == null || lapsed(current) ? 0 : current.failures()) + 1,
+                Instant.now().plus(lockout)));
     }
 
     public void recordSuccess(String userId) {
         attempts.remove(userId);
+    }
+
+    /** Ids that never sign on, including ones that do not exist, must not accumulate. */
+    private void sweep() {
+        attempts.values().removeIf(SignOnThrottle::lapsed);
+    }
+
+    private static boolean lapsed(Attempts attempt) {
+        return !attempt.forgetAt().isAfter(Instant.now());
     }
 }

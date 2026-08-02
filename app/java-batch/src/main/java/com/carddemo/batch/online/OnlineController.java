@@ -4,6 +4,7 @@ import com.carddemo.batch.domain.Card;
 import com.carddemo.batch.domain.SecurityUser;
 import com.carddemo.batch.domain.TransactionRecord;
 import com.carddemo.batch.online.security.SignOnSessions;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,6 +39,7 @@ public class OnlineController {
                                 String confirmation) {
     }
 
+    private final SignOnSessions sessions;
     private final SignOnService signOnService;
     private final MenuService menuService;
     private final UserService userService;
@@ -46,10 +49,11 @@ public class OnlineController {
     private final BillPaymentService billPaymentService;
     private final ReportService reportService;
 
-    public OnlineController(SignOnService signOnService, MenuService menuService, UserService userService,
+    public OnlineController(SignOnSessions sessions, SignOnService signOnService, MenuService menuService, UserService userService,
                             AccountService accountService, CardService cardService,
                             TransactionService transactionService, BillPaymentService billPaymentService,
                             ReportService reportService) {
+        this.sessions = sessions;
         this.signOnService = signOnService;
         this.menuService = menuService;
         this.userService = userService;
@@ -63,6 +67,12 @@ public class OnlineController {
     @PostMapping("/signon")
     public SignOnService.SignOnResult signOn(@RequestBody SignOnRequest request) {
         return signOnService.signOn(request.userId(), request.password());
+    }
+
+    /** CESF LOGOFF, the terminal sign off that ended the CICS session. */
+    @PostMapping("/signoff")
+    public void signOff(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
+        sessions.close(SignOnSessions.token(authorization));
     }
 
     @GetMapping("/menu")

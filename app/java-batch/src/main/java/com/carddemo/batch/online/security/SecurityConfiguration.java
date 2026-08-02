@@ -1,5 +1,6 @@
 package com.carddemo.batch.online.security;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,6 +17,17 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 public class SecurityConfiguration {
+
+    /**
+     * A filter bean is otherwise also registered for every URL, so a bearer token on a request that
+     * no security chain matches would set an authentication nothing ever clears off the thread.
+     */
+    @Bean
+    public FilterRegistrationBean<SignOnTokenFilter> signOnTokenFilterRegistration(SignOnTokenFilter filter) {
+        FilterRegistrationBean<SignOnTokenFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
 
     @Bean
     public SecurityFilterChain apiSecurity(HttpSecurity http, SignOnTokenFilter tokenFilter) throws Exception {

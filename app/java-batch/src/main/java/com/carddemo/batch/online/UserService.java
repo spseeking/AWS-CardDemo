@@ -52,9 +52,11 @@ public class UserService {
         KeyedRecordStore<SecurityUser> users = repository.users();
         SecurityUser current = users.find(key(userId))
                 .orElseThrow(() -> new BusinessRuleException("User ID NOT found..."));
-        SecurityUser updated = new SecurityUser(current.userId(), firstName, lastName, "",
-                type.toUpperCase(Locale.ROOT), current.filler());
-        boolean newPassword = !vault.matches(key(userId), storedPassword(password));
+        boolean newPassword = changedPassword(current, storedPassword(password));
+        // an unchanged password of a user not migrated yet stays where it is, so that a resubmitted
+        // identical form still compares equal and is refused the way COUSR02C refused it
+        SecurityUser updated = new SecurityUser(current.userId(), firstName, lastName,
+                newPassword ? "" : current.password(), type.toUpperCase(Locale.ROOT), current.filler());
         if (!newPassword && updated.format().equals(current.format())) {
             throw new BusinessRuleException("Please modify to update ...");
         }
@@ -64,6 +66,17 @@ public class UserService {
             vault.store(key(userId), storedPassword(password));
         }
         return updated;
+    }
+
+    /**
+     * A user extracted from USRSEC has no hash until a first sign on migrates it, and "no hash" is
+     * not "wrong password": the clear SEC-USR-PWD still carries the value COUSR02C compared against.
+     */
+    private boolean changedPassword(SecurityUser current, String submitted) {
+        String key = key(current.userId());
+        return vault.hasHash(key)
+                ? !vault.matches(key, submitted)
+                : !current.password().trim().equals(submitted);
     }
 
     /**

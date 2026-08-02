@@ -14,8 +14,6 @@ import java.io.IOException;
 @Component
 public class SignOnTokenFilter extends OncePerRequestFilter {
 
-    private static final String PREFIX = "Bearer ";
-
     private final SignOnSessions sessions;
 
     public SignOnTokenFilter(SignOnSessions sessions) {
@@ -25,9 +23,9 @@ public class SignOnTokenFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith(PREFIX)) {
-            sessions.authenticate(header.substring(PREFIX.length()).trim())
+        String token = SignOnSessions.token(request.getHeader("Authorization"));
+        if (!token.isEmpty()) {
+            sessions.authenticate(token)
                     .ifPresent(authentication -> SecurityContextHolder.getContext()
                             .setAuthentication(authentication));
         }

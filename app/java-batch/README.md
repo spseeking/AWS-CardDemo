@@ -34,8 +34,10 @@ CICS checked transaction security before the program ran, so the endpoints do th
 `POST /api/signon` is the only anonymous one; it returns a bearer token that stands in for the
 commarea identity and every other call needs `Authorization: Bearer <token>`. The COUSR* user
 administration endpoints need `SEC-USR-TYPE = A`, and the menu is chosen from the signed on
-identity rather than a request parameter. Five failed sign on attempts lock a user id out
-(`carddemo.security.max-sign-on-attempts`, `carddemo.security.lockout-seconds`).
+identity rather than a request parameter. `POST /api/signoff` is the CESF LOGOFF equivalent and
+drops the token. Five failed sign on attempts lock a user id out
+(`carddemo.security.max-sign-on-attempts`, `carddemo.security.lockout-seconds`); as with the RACF
+revoke count, the count starts again once the lockout has been served.
 
 SEC-USR-PWD has room for 8 clear bytes only, so hashes live in a sidecar file
 (`carddemo.user-credential-file`) keyed on SEC-USR-ID and USRSEC keeps its 80 byte layout. A user

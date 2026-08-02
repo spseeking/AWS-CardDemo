@@ -139,6 +139,16 @@ class OnlineControllerTest {
     }
 
     @Test
+    void signingOffInvalidatesTheToken() throws Exception {
+        String token = tokenFor("USER0001", "PASSWORD");
+
+        mockMvc.perform(get("/api/menu").header("Authorization", token)).andExpect(status().isOk());
+        mockMvc.perform(post("/api/signoff").header("Authorization", token)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/menu").header("Authorization", token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void keepsTheUserAdministrationScreensForAdministrators() throws Exception {
         String user = tokenFor("USER0001", "PASSWORD");
 
