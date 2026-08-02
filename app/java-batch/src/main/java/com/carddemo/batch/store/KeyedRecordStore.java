@@ -5,7 +5,9 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -22,7 +24,7 @@ public class KeyedRecordStore<T> {
     private final Path path;
     private final Function<T, String> keyExtractor;
     private final Function<T, String> formatter;
-    private final Map<String, T> records = new LinkedHashMap<>();
+    private final Map<String, T> records = new HashMap<>();
 
     public KeyedRecordStore(Path path, Function<String, T> parser, Function<T, String> keyExtractor,
                             Function<T, String> formatter) {
@@ -63,13 +65,20 @@ public class KeyedRecordStore<T> {
         return records.size();
     }
 
+    /**
+     * Records in key sequence, the order a VSAM browse returns them. Every one of these clusters is
+     * keyed on the leading field of its record, so ordering on the formatted record orders on the
+     * key without each caller having to describe the key layout.
+     */
     public Iterable<T> values() {
-        return records.values();
+        List<T> ordered = new ArrayList<>(records.values());
+        ordered.sort((left, right) -> formatter.apply(left).compareTo(formatter.apply(right)));
+        return ordered;
     }
 
     public void save() {
         StringBuilder content = new StringBuilder();
-        for (T record : records.values()) {
+        for (T record : values()) {
             content.append(formatter.apply(record)).append(System.lineSeparator());
         }
         try {

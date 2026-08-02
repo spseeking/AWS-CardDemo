@@ -3,6 +3,8 @@ package com.carddemo.batch.online;
 import com.carddemo.batch.domain.Card;
 import com.carddemo.batch.domain.SecurityUser;
 import com.carddemo.batch.domain.TransactionRecord;
+import com.carddemo.batch.online.security.SignOnSessions;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -64,14 +66,20 @@ public class OnlineController {
     }
 
     @GetMapping("/menu")
-    public List<MenuService.MenuOption> menu(@RequestParam(defaultValue = "U") String userType) {
-        return menuService.menuFor(userType);
+    public List<MenuService.MenuOption> menu(Authentication authentication) {
+        return menuService.menuFor(userType(authentication));
     }
 
     @GetMapping("/menu/{option}")
-    public MenuService.MenuOption menuOption(@PathVariable int option,
-                                             @RequestParam(defaultValue = "U") String userType) {
-        return menuService.select(userType, option);
+    public MenuService.MenuOption menuOption(@PathVariable int option, Authentication authentication) {
+        return menuService.select(userType(authentication), option);
+    }
+
+    /** COMEN01C read the user type out of the commarea the sign on transaction filled in. */
+    private static String userType(Authentication authentication) {
+        boolean admin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> SignOnSessions.ADMIN_AUTHORITY.equals(authority.getAuthority()));
+        return admin ? SignOnService.ADMIN_TYPE : "U";
     }
 
     @GetMapping("/users")
